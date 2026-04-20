@@ -7,6 +7,7 @@
 # Distributed under terms of the MIT license.
 
 import pandas as pd
+import numpy as np
 import subprocess
 from subprocess import CalledProcessError
 
@@ -46,18 +47,24 @@ class SummaryLogger(object):
     def write(self):
         """Write summary to csv file
         If date_str already exists, overwrite it"""
-        new_summary = pd.DataFrame([self._summ.values()], index=[self._date_str], columns=self._summ.keys())
+        summ_values = []
+        for v in self._summ.values():
+            if isinstance(v, (np.integer, np.floating)):
+                summ_values.append(v.item())
+            elif hasattr(v, '__iter__') and not isinstance(v, str):
+                summ_values.append(str(list(v)))
+            else:
+                summ_values.append(str(v) if v is not None else "")
+        new_summary = pd.DataFrame([summ_values], index=[self._date_str], columns=self._summ.keys())
         try:
             current = pd.read_csv(self._output_path, index_col=0)
         except IOError:
             new_summary.to_csv(self._output_path)
             return
         if self._date_str in current.index:
-            # JOIN by the joined keys
-            # current = current.loc[:, current.columns.union(new_summary.columns)]
-            # Changed in 2024.3.9
             current = current.reindex(columns=current.columns.union(new_summary.columns))
-            current.update(new_summary)
+            for col in new_summary.columns:
+                current[col] = new_summary[col]
         else:
             current = pd.concat([current, new_summary])
         current.to_csv(self._output_path)

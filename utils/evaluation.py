@@ -1,15 +1,12 @@
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
-# vim:fenc=utf-8
-#
-# Copyright © 2017 Takuma Yagi <tyagi@iis.u-tokyo.ac.jp>
-#
-# Distributed under terms of the MIT license.
-
 import numpy as np
+import torch
 
 
 def calc_mse(pred_y, true_y):
+    if isinstance(pred_y, torch.Tensor):
+        pred_y = pred_y.detach().cpu().numpy()
+    if isinstance(true_y, torch.Tensor):
+        true_y = true_y.detach().cpu().numpy()
     return np.linalg.norm(pred_y - true_y, axis=pred_y.ndim-1)
 
 
@@ -38,7 +35,11 @@ class Evaluator(object):
 
     def update(self, loss, pred_y, batch):
         batch_size = len(pred_y)
-        true_y = np.array([z[1] for z in batch])  # (B, T, 2)
+        true_y = batch[1]
+        if isinstance(true_y, torch.Tensor):
+            true_y = true_y.detach().cpu().numpy()
+        if isinstance(pred_y, torch.Tensor):
+            pred_y = pred_y.detach().cpu().numpy()
         self.loss += loss * batch_size
         mse = calc_mse(pred_y[..., :2], true_y[..., :2])
         self.ade += np.mean(mse) * batch_size

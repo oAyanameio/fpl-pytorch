@@ -37,9 +37,11 @@ def concat_examples_pytorch(batch, device, data_idxs):
     return batch_array
 
 
-def validate_and_report(model, valid_loader, args):
+def validate_and_report(model, valid_loader, args, train_eval, valid_eval, summary, save_dir, epochs, st):
+    args_dict = vars(args).copy()
+    args_dict.pop('device', None)
     prediction_dict = {
-        "arguments": vars(args),
+        "arguments": args_dict,
         "predictions": {}
     }
     model.eval()  # 设置模型为评估模式
@@ -50,14 +52,15 @@ def validate_and_report(model, valid_loader, args):
             loss, pred_y = model(inputs)
             valid_eval.update(loss.item(), pred_y, batch)
 
+            # 处理batch中的每个样本
             write_prediction(prediction_dict["predictions"], batch, pred_y)
 
         message_str = "Train loss {} / ADE {} / FDE {}, valid loss {} / ADE {} / FDE {}, elapsed time: {} (s)"
         logger.info(message_str.format(train_eval("loss"), train_eval("ade"), train_eval("fde"),
                                        valid_eval("loss"), valid_eval("ade"), valid_eval("fde"), time.time() - st))
 
-        train_eval.update_summary(summary, ["loss", "ade", "fde"])
-        valid_eval.update_summary(summary, ["loss", "ade", "fde"])
+        train_eval.update_summary(summary, epochs, ["loss", "ade", "fde"])
+        valid_eval.update_summary(summary, epochs, ["loss", "ade", "fde"])
 
         predictions = prediction_dict["predictions"]
         pred_list = [[pred for vk, v_dict in sorted(predictions.items())
@@ -145,7 +148,7 @@ if __name__ == "__main__":
         #     validate_and_report(model, valid_loader, args)
         #     print("-------------------")
     logger.info("Validation...")
-    validate_and_report(model, valid_loader, args)
+    validate_and_report(model, valid_loader, args, train_eval, valid_eval, summary, save_dir, epochs, st)
     if args.save_model:
         torch.save(model.state_dict(), os.path.join(save_dir, "fpl-pytorch.pth"))
     summary.update("finished", 1)

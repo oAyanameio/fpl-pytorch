@@ -11,7 +11,16 @@ import quaternion
 from functools import reduce
 from operator import add
 
-from chainer.dataset import dataset_mixin
+# 自定义DatasetMixin类，替代chainer的dataset_mixin
+class DatasetMixin:
+    def __getitem__(self, index):
+        return self.get_example(index)
+
+    def __len__(self):
+        raise NotImplementedError
+
+    def get_example(self, index):
+        raise NotImplementedError
 
 
 def parse_data_CV(data, split_list, input_len, offset_len, pred_len, nb_train):
@@ -56,7 +65,7 @@ def accumulate_egomotion(rots, vels):
     return egos
 
 
-class SceneDatasetCV(dataset_mixin.DatasetMixin):
+class SceneDatasetCV(DatasetMixin):
     def __init__(self, data, input_len, offset_len, pred_len, width, height,
                  data_dir, split_list, nb_train=-1, flip=False, use_scale=False, ego_type="sfm"):
         self.X, self.Y, self.video_ids, self.frames, self.person_ids, \
@@ -138,7 +147,7 @@ class SceneDatasetCV(dataset_mixin.DatasetMixin):
                horizontal_flip, egomotions, self.scales[i], self.turn_mags[i], self.scales_all[i]
 
 
-class SceneDatasetForAnalysis(dataset_mixin.DatasetMixin):
+class SceneDatasetForAnalysis(DatasetMixin):
     """
     Dataset class only for plot
     """
